@@ -9,48 +9,57 @@ JMP     MAIN                   ; Salta para o rótulo MAIN (início do programa)
 MAIN:
     MOV     DISP, #0FFH        ; Desliga o display
     MOV     DPTR, #DISPLAY     ; Inicializa o registrador DPTR com o endereço do array DISPLAY
+    CALL    WAIT_SW            ;
 
-WAIT_SW0:
-    JB      SW0, WAIT_SW1      ; Verifica se o botão SW0 está pressionado, se não, salta para WAIT_SW1
+WAIT_SW:
+    JNB     SW0, INTER_SW0     ;
+    JNB     SW1, INTER_SW1     ;
+    SJMP    WAIT_SW            ;
+    RET                        ;
+
+CHECK_UPDATE:
+    JNB     SW0, SET_250MS
+    JNB     SW1, SET_1000MS    ;
+    RET
+
+SET_250MS:
     MOV     7FH, #5            ; Se SW0 estiver selecionada, carrega o valor 5
-    JMP     INTER_SW0          ; Salta para a sub-rotina INTER_SW0
+    RET 
 
-WAIT_SW1:
-    JB      SW1, WAIT_SW0      ; Verifica se o botão SW1 está pressionado, se não, salta para WAIT_SW0
-    MOV     7FH, #20           ; Se SW1 estiver selecionado, carrega o valor 20
-    JMP     INTER_SW1          ; Salta para a sub-rotina INTER_SW1
+SET_1000MS:
+    MOV     7FH, #20            ; Se SW0 estiver selecionada, carrega o valor 5
+    RET 
 
 VERIFY_SW0:
     JB      SW0, INTER_SW0     ;
-    MOV     7FH, #5            ; Se SW0 estiver selecionada, carrega o valor 5
+    CALL    SET_250MS          ; Se SW0 estiver selecionada, carrega o valor 5
     RET                        ;
 
 VERIFY_SW1:
     JB      SW1, INTER_SW1     ;
-    MOV     7FH, #20           ; Se SW1 estiver selecionado, carrega o valor 20
+    CALL    SET_1000MS         ; Se SW1 estiver selecionado, carrega o valor 20
     RET                        ;
 
 INTER_SW0:
-    MOV     A, R1              ; Move o valor de R1 para o acumulador A
-    MOVC    A, @A+DPTR         ; Move o próximo valor do array DISPLAY para A
-    MOV     DISP, A            ; Move o valor de A para o pino DISP
-    CALL    VERIFY_SW1         ; Se SW1 estiver pressionado, volta a interrupção SW1
-    CALL    DELAY              ; Chama a sub-rotina de delay
-    INC     R1                 ; Incrementa o valor de R1
-    CJNE    R1, #10, INTER_SW0 ; Compara R1 com 10, se for diferente, salta para INTER_SW0
-    MOV     R1, #0             ; Se R1 for igual a 10, reinicia R1
-    SJMP    WAIT_SW0           ; Salta para WAIT_SW0 para aguardar o próximo pressionamento de SW0
+    CALL    SET_250MS          ;
+    CALL    LOOP               ;
+    CALL    WAIT_SW            ;
 
 INTER_SW1:
-    MOV     A, R1              ; Move o valor de R1 para o acumulador A
-    MOVC    A, @A+DPTR         ; Move o próximo valor do array DISPLAY para A
-    MOV     DISP, A            ; Move o valor de A para o pino DISP
-    CALL    VERIFY_SW0         ; Se SW0 estiver pressionado, volta a interrupção SW0
-    CALL    DELAY              ; Chama a sub-rotina de delay
-    INC     R1                 ; Incrementa o valor de R1
-    CJNE    R1, #10, INTER_SW1 ; Compara R1 com 10, se for diferente, salta para INTER_SW1
-    MOV     R1, #0             ; Se R1 for igual a 10, reinicia R1
-    SJMP    WAIT_SW1           ; Salta para WAIT_SW1 para aguardar o próximo pressionamento de SW1
+    CALL    SET_1000MS         ;
+    CALL    LOOP               ;
+    CALL    WAIT_SW            ;
+
+LOOP:
+    MOV     A, R1              ;
+    MOVC    A, @A+DPTR         ;
+    MOV     DISP, A            ;
+    CALL    CHECK_UPDATE       ;
+    CALL    DELAY              ;
+    INC     R1                 ;
+    CJNE    R1, #10, LOOP      ;
+    MOV     R1, #0             ;
+    RET
 
 DELAY:
     MOV     R4, 7FH            ; Inicializa R4 com o valor 7FH
